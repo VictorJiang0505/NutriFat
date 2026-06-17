@@ -1,0 +1,1 @@
+Nutrition app for personal users to track what they've eaten based on personalized data, and get recommendations
