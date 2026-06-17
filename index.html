@@ -117,10 +117,14 @@
       background: transparent;
     }
 
+    .mascot-wrapper.left-mascot .header-mascot {
+      transform: scaleX(-1);
+    }
+
     .speech-bubble {
       position: absolute;
-      left: calc(100% + 10px);
-      bottom: 28px;
+      right: calc(100% + 10px);
+      bottom: 18px;
       background: #fff;
       color: #111;
       font-size: 0.72rem;
@@ -137,11 +141,11 @@
     .speech-bubble::before {
       content: '';
       position: absolute;
-      left: -9px;
+      right: -9px;
       bottom: 12px;
-      border-width: 5px 9px 5px 0;
+      border-width: 5px 0 5px 9px;
       border-style: solid;
-      border-color: transparent #fff transparent transparent;
+      border-color: transparent transparent transparent #fff;
     }
 
     .header-hero {
@@ -784,19 +788,21 @@
 
     <!-- ── Header: mascots flanking the title ──────────── -->
     <header class="app-header">
-      <div class="mascot-wrapper">
-        <img src="person-looking-up.jpg.png" class="header-mascot" alt="" aria-hidden="true" />
-        <div class="speech-bubble">To eat the snack...<br>or be the snack</div>
+      <div class="mascot-wrapper left-mascot">
+        <img src="800px-TotK_Sticky_Frog_Model.png" class="header-mascot" alt="" aria-hidden="true" />
       </div>
       <div class="header-hero">
         <h1>NutriFat</h1>
         <p class="subtitle">
           <span x-text="todayLabel"></span>
           <span class="subtitle-divider">|</span>
-          <span>How fat are you feeling today?</span>
+          <span>How hungry are you feeling today?</span>
         </p>
       </div>
-      <img src="800px-TotK_Sticky_Frog_Model.png" class="header-mascot" alt="" aria-hidden="true" />
+      <div class="mascot-wrapper">
+        <div class="speech-bubble">To eat the snack...<br>or be the snack</div>
+        <img src="800px-TotK_Sticky_Frog_Model.png" class="header-mascot" alt="" aria-hidden="true" />
+      </div>
     </header>
 
     <!-- ── Two-column body ─────────────────────────────── -->
