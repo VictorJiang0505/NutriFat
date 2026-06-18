@@ -219,5 +219,5 @@ app.post('/api/daily-summary', async (req, res) => {
 
 const PORT = process.env.PORT || 3000;
 createServer(app).listen(PORT, () => {
-  console.log(`NutriTrack running at http://localhost:${PORT}`);
+  console.log(`NutriFat running at http://localhost:${PORT}`);
 });
