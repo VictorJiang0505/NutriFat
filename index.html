@@ -742,6 +742,141 @@
       100% { background-position: -200% 0; }
     }
 
+    /* ── Daily score display ─────────────────────────────── */
+    .score-display {
+      display: flex;
+      align-items: center;
+      gap: 18px;
+      margin-bottom: 14px;
+      padding-bottom: 14px;
+      border-bottom: 1px solid #2a4a3a;
+    }
+
+    .score-number {
+      font-family: 'Playfair Display', serif;
+      font-size: 3.8rem;
+      font-weight: 700;
+      line-height: 1;
+      transition: color 0.4s ease;
+    }
+
+    .score-grade {
+      font-size: 1rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      transition: color 0.4s ease;
+    }
+
+    /* ── Monthly score calendar ──────────────────────────── */
+    .calendar-section {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      padding: 24px 28px 28px;
+      margin-top: 32px;
+    }
+
+    .calendar-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 20px;
+    }
+
+    .calendar-title {
+      font-family: 'Playfair Display', serif;
+      font-size: 1.25rem;
+      color: var(--text);
+    }
+
+    .calendar-nav {
+      display: flex;
+      gap: 6px;
+    }
+
+    .calendar-nav button {
+      background: transparent;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      color: var(--text);
+      font-size: 1.1rem;
+      width: 32px;
+      height: 32px;
+      cursor: pointer;
+      transition: border-color 0.15s, color 0.15s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .calendar-nav button:hover:not(:disabled) { border-color: var(--accent); color: var(--accent); }
+    .calendar-nav button:disabled { opacity: 0.3; cursor: default; }
+
+    .calendar-grid {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 5px;
+    }
+
+    .calendar-dow {
+      text-align: center;
+      font-size: 0.65rem;
+      font-weight: 700;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      padding: 0 0 8px;
+    }
+
+    .calendar-day {
+      aspect-ratio: 1;
+      border-radius: 8px;
+      border: 1px solid var(--line);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 1px;
+      transition: border-color 0.15s;
+      min-height: 44px;
+    }
+
+    .calendar-day.is-today { border-color: var(--accent); background: rgba(110,231,183,0.06); }
+    .calendar-day.is-future { opacity: 0.35; }
+    .calendar-day.is-empty  { border: none; }
+
+    .cal-day-num {
+      font-size: 0.65rem;
+      color: var(--muted);
+      font-weight: 600;
+      line-height: 1;
+    }
+
+    .cal-score {
+      font-size: 0.9rem;
+      font-weight: 700;
+      line-height: 1;
+    }
+
+    .calendar-avg {
+      margin-top: 18px;
+      text-align: center;
+      font-size: 0.85rem;
+      color: var(--muted);
+    }
+
+    .calendar-avg strong {
+      color: var(--accent);
+      font-size: 1rem;
+    }
+
+    @media (max-width: 600px) {
+      .calendar-section { padding: 16px; }
+      .calendar-day { min-height: 36px; }
+      .cal-score { font-size: 0.75rem; }
+    }
+
     /* ── Responsive ─────────────────────────────────────── */
     @media (max-width: 1000px) {
       .page-body {
@@ -1253,36 +1388,94 @@
           <button class="secondary" @click="clearLog()" :disabled="log.length === 0">Clear Log</button>
         </div>
 
-        <!-- AI Summary button — visible when log non-empty and no summary/loading -->
+        <!-- Score button — visible when log non-empty and no score yet -->
         <button
           class="summary-btn"
-          x-show="log.length > 0 && !summaryLoading && !summary"
+          x-show="log.length > 0 && !summaryLoading && dailyScore === null"
           x-cloak
-          @click="fetchSummary()"
-          x-text="summaryStale ? '↻ Refresh Summary' : '✨ Get AI Summary'"
-        ></button>
+          @click="fetchScore()"
+        >📊 Get My Score</button>
 
-        <!-- Daily AI Summary — skeleton while loading, text when done -->
-        <div class="summary-card" x-show="summaryLoading || summary" x-cloak>
+        <!-- Daily Score Card — skeleton while loading, score+commentary when done -->
+        <div class="summary-card" x-show="summaryLoading || dailyScore !== null" x-cloak>
+          <!-- Score number + grade -->
+          <div class="score-display" x-show="dailyScore !== null">
+            <div class="score-number" :style="{ color: scoreColor }">
+              <span x-text="dailyScore"></span><span style="font-size:0.42em;opacity:0.55;margin-left:3px">/100</span>
+            </div>
+            <div>
+              <div class="score-grade" :style="{ color: scoreColor }" x-text="scoreGrade"></div>
+              <div style="font-size:0.72rem;color:var(--muted);margin-top:3px;letter-spacing:0.03em">Today's Nutrition Score</div>
+            </div>
+          </div>
+
           <div class="summary-title" style="display:flex;justify-content:space-between;align-items:center;">
-            <span>✨ Today's Summary</span>
-            <button class="secondary" style="font-size:0.75rem;padding:3px 9px;color:var(--accent);border-color:#2a4a3a;" x-show="summary && !summaryLoading" @click="summary = null; summaryStale = true; localStorage.removeItem('nutritrack-summary-cache'); fetchSummary()">↻ Refresh</button>
+            <span>📊 Score Breakdown</span>
+            <button class="secondary" style="font-size:0.75rem;padding:3px 9px;color:var(--accent);border-color:#2a4a3a;"
+              x-show="dailyScore !== null && !summaryLoading"
+              @click="dailyScore = null; summary = null; summaryStale = true; localStorage.removeItem('nutritrack-score-cache'); fetchScore()">↻ Recalculate</button>
           </div>
           <div x-show="summaryLoading">
             <div class="skeleton-line" style="width:96%"></div>
             <div class="skeleton-line" style="width:82%"></div>
-            <div class="skeleton-line" style="width:90%"></div>
             <div class="skeleton-line" style="width:68%"></div>
           </div>
           <p class="summary-text" x-show="!summaryLoading && summary" x-text="summary"></p>
         </div>
       </main>
     </div>
+
+    <!-- ── Monthly Score Calendar ──────────────────────────── -->
+    <section class="calendar-section">
+      <div class="calendar-header">
+        <h2 class="calendar-title" x-text="calendarMonthLabel"></h2>
+        <div class="calendar-nav">
+          <button @click="prevMonth()" title="Previous month">&#8249;</button>
+          <button @click="nextMonth()" :disabled="isCurrentMonth" title="Next month">&#8250;</button>
+        </div>
+      </div>
+
+      <div class="calendar-grid">
+        <!-- Day-of-week headers -->
+        <div class="calendar-dow">Sun</div>
+        <div class="calendar-dow">Mon</div>
+        <div class="calendar-dow">Tue</div>
+        <div class="calendar-dow">Wed</div>
+        <div class="calendar-dow">Thu</div>
+        <div class="calendar-dow">Fri</div>
+        <div class="calendar-dow">Sat</div>
+
+        <!-- Day cells -->
+        <template x-for="day in calendarDays" :key="day.id">
+          <div
+            class="calendar-day"
+            :class="{ 'is-today': day.isToday, 'is-future': !day.empty && !day.isPast && !day.isToday, 'is-empty': day.empty }"
+          >
+            <span class="cal-day-num" x-show="!day.empty" x-text="day.d"></span>
+            <span
+              class="cal-score"
+              x-show="!day.empty && day.isPast && day.score !== null"
+              :style="{ color: scoreColorFor(day.score) }"
+              x-text="day.score"
+            ></span>
+          </div>
+        </template>
+      </div>
+
+      <div class="calendar-avg" x-show="calendarAvg !== null">
+        Monthly average: <strong x-text="calendarAvg + '/100'"></strong>
+      </div>
+      <div class="calendar-avg" x-show="calendarAvg === null" style="font-size:0.78rem">
+        No scores recorded this month yet — log your food and get your first score above!
+      </div>
+    </section>
+
   </div>
 
   <script>
     const STORAGE_PREFIX = 'nutritrack-log-';
     const PROFILE_STORAGE_KEY = 'nutritrack-profile-state';
+    const SCORE_STORAGE_PREFIX = 'nutritrack-score-';
     const USDA_API_KEY = 'DEMO_KEY';
     const USDA_URL = 'https://api.nal.usda.gov/fdc/v1/foods/search';
 
@@ -1337,6 +1530,35 @@
 
     function emptyNutrition() {
       return { calories: 0, protein_g: 0, sodium_mg: 0, saturated_fat_g: 0, fiber_g: 0, added_sugar_g: 0 };
+    }
+
+    // Deterministic 1-100 score. Quadratic penalties (convex) so one big deviation
+    // hurts more than many small ones of equal total. 50% off = full penalty for that nutrient.
+    // Weights: calories 25, protein 20, sodium 15, sat fat 15, fiber 15, sugar 10.
+    // Direction: calories penalise both over/under; protein+fiber penalise only under; the rest only over.
+    function calculateDailyScore(totals, targets) {
+      const checks = [
+        { key: 'calories',        weight: 25, dir: 'both'  },
+        { key: 'protein_g',       weight: 20, dir: 'under' },
+        { key: 'sodium_mg',       weight: 15, dir: 'over'  },
+        { key: 'saturated_fat_g', weight: 15, dir: 'over'  },
+        { key: 'fiber_g',         weight: 15, dir: 'under' },
+        { key: 'added_sugar_g',   weight: 10, dir: 'over'  },
+      ];
+      let totalPenalty = 0;
+      for (const c of checks) {
+        const actual = totals[c.key] || 0;
+        const target = targets[c.key] || 1;
+        const dev = (actual - target) / target;
+        let effectiveDev = 0;
+        if      (c.dir === 'both')  effectiveDev = Math.abs(dev);
+        else if (c.dir === 'over')  effectiveDev = Math.max(0, dev);
+        else if (c.dir === 'under') effectiveDev = Math.max(0, -dev);
+        // Quadratic: 50% deviation → full nutrient penalty; capped at 1.0
+        const penaltyFraction = Math.min(1, (effectiveDev / 0.5) ** 2);
+        totalPenalty += c.weight * penaltyFraction;
+      }
+      return Math.round(Math.max(0, 100 - totalPenalty));
     }
 
     function scaleFood(food, grams) {
@@ -1407,6 +1629,10 @@
         summaryLoading: false,
         summaryStale: false,
         _summaryTimer: null,
+        dailyScore: null,
+        calendarYear: new Date().getFullYear(),
+        calendarMonth: new Date().getMonth(),
+        calendarScores: {},
 
         get totals() {
           return this.log.reduce((totals, entry) => {
@@ -1432,13 +1658,15 @@
           this.speechSupported = !!(window.SpeechRecognition || window.webkitSpeechRecognition);
           if (this.log.length > 0) {
             try {
-              const cached = JSON.parse(localStorage.getItem('nutritrack-summary-cache') || 'null');
+              const cached = JSON.parse(localStorage.getItem('nutritrack-score-cache') || 'null');
               const cacheKey = JSON.stringify(this.log);
-              if (cached && cached.key === cacheKey && cached.summary) {
-                this.summary = cached.summary;
+              if (cached && cached.key === cacheKey && cached.score != null) {
+                this.dailyScore = cached.score;
+                this.summary = cached.commentary || null;
               }
             } catch { /* ignore */ }
           }
+          this.loadCalendarScores();
         },
 
         loadProfileState() {
@@ -1476,37 +1704,136 @@
           ];
         },
 
-        scheduleSummary() {
-          clearTimeout(this._summaryTimer);
-          if (this.log.length === 0) { this.summary = null; return; }
-          this._summaryTimer = setTimeout(() => this.fetchSummary(), 2000);
+        get scoreColor() {
+          const s = this.dailyScore;
+          if (s === null) return 'var(--text)';
+          if (s >= 90) return '#6ee7b7';
+          if (s >= 75) return '#a3e635';
+          if (s >= 60) return '#fbbf24';
+          if (s >= 45) return '#f97316';
+          return '#ef4444';
         },
 
-        async fetchSummary() {
+        scoreColorFor(s) {
+          if (s == null) return 'var(--muted)';
+          if (s >= 90) return '#6ee7b7';
+          if (s >= 75) return '#a3e635';
+          if (s >= 60) return '#fbbf24';
+          if (s >= 45) return '#f97316';
+          return '#ef4444';
+        },
+
+        get scoreGrade() {
+          const s = this.dailyScore;
+          if (s === null) return '';
+          if (s >= 90) return 'Excellent';
+          if (s >= 75) return 'Good';
+          if (s >= 60) return 'Decent';
+          if (s >= 45) return 'Needs Work';
+          return 'Poor';
+        },
+
+        get calendarMonthLabel() {
+          return new Date(this.calendarYear, this.calendarMonth).toLocaleDateString(undefined, { month: 'long', year: 'numeric' });
+        },
+
+        get isCurrentMonth() {
+          const now = new Date();
+          return this.calendarYear === now.getFullYear() && this.calendarMonth === now.getMonth();
+        },
+
+        get calendarDays() {
+          const year = this.calendarYear;
+          const month = this.calendarMonth;
+          const firstDay = new Date(year, month, 1).getDay();
+          const daysInMonth = new Date(year, month + 1, 0).getDate();
+          const todayStr = new Date().toISOString().slice(0, 10);
+          const days = [];
+          for (let i = 0; i < firstDay; i++) days.push({ empty: true, id: 'blank-' + i });
+          for (let d = 1; d <= daysInMonth; d++) {
+            const mo = String(month + 1).padStart(2, '0');
+            const dy = String(d).padStart(2, '0');
+            const dateStr = `${year}-${mo}-${dy}`;
+            const isPast = dateStr <= todayStr;
+            const isToday = dateStr === todayStr;
+            const scoreData = this.calendarScores[dateStr];
+            days.push({ d, dateStr, isPast, isToday, score: scoreData != null ? scoreData.score : null, empty: false, id: dateStr });
+          }
+          return days;
+        },
+
+        get calendarAvg() {
+          const mo = String(this.calendarMonth + 1).padStart(2, '0');
+          const prefix = `${this.calendarYear}-${mo}`;
+          const scores = Object.entries(this.calendarScores)
+            .filter(([k]) => k.startsWith(prefix))
+            .map(([, v]) => v.score)
+            .filter(s => s != null);
+          if (!scores.length) return null;
+          return Math.round(scores.reduce((a, b) => a + b, 0) / scores.length);
+        },
+
+        loadCalendarScores() {
+          const scores = {};
+          for (let i = 0; i < localStorage.length; i++) {
+            const key = localStorage.key(i);
+            if (key && key.startsWith(SCORE_STORAGE_PREFIX)) {
+              try {
+                const data = JSON.parse(localStorage.getItem(key));
+                if (data && data.score != null) {
+                  scores[key.slice(SCORE_STORAGE_PREFIX.length)] = data;
+                }
+              } catch { /* ignore */ }
+            }
+          }
+          this.calendarScores = scores;
+        },
+
+        prevMonth() {
+          if (this.calendarMonth === 0) { this.calendarYear -= 1; this.calendarMonth = 11; }
+          else { this.calendarMonth -= 1; }
+        },
+
+        nextMonth() {
+          if (this.isCurrentMonth) return;
+          if (this.calendarMonth === 11) { this.calendarYear += 1; this.calendarMonth = 0; }
+          else { this.calendarMonth += 1; }
+        },
+
+        scheduleScore() {
+          if (this.log.length === 0) { this.summary = null; this.dailyScore = null; }
+        },
+
+        async fetchScore() {
           if (this.log.length === 0) return;
+          const score = calculateDailyScore(this.totals, this.dailyValues);
+          this.dailyScore = score;
           const cacheKey = JSON.stringify(this.log);
           try {
-            const cached = JSON.parse(localStorage.getItem('nutritrack-summary-cache') || 'null');
-            if (cached && cached.key === cacheKey && cached.summary) {
-              this.summary = cached.summary;
+            const cached = JSON.parse(localStorage.getItem('nutritrack-score-cache') || 'null');
+            if (cached && cached.key === cacheKey && cached.score != null) {
+              this.dailyScore = cached.score;
+              this.summary = cached.commentary || null;
               return;
             }
           } catch { /* ignore */ }
           this.summaryLoading = true;
           try {
-            const res = await fetch('/api/daily-summary', {
+            const totalsSnap = {
+              calories:        Math.round(this.totals.calories),
+              protein_g:       +this.totals.protein_g.toFixed(1),
+              sodium_mg:       Math.round(this.totals.sodium_mg),
+              saturated_fat_g: +this.totals.saturated_fat_g.toFixed(1),
+              fiber_g:         +this.totals.fiber_g.toFixed(1),
+              added_sugar_g:   +this.totals.added_sugar_g.toFixed(1),
+            };
+            const res = await fetch('/api/daily-score', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({
+                score,
                 targets: this.dailyValues,
-                totals: {
-                  calories:        Math.round(this.totals.calories),
-                  protein_g:       +this.totals.protein_g.toFixed(1),
-                  sodium_mg:       Math.round(this.totals.sodium_mg),
-                  saturated_fat_g: +this.totals.saturated_fat_g.toFixed(1),
-                  fiber_g:         +this.totals.fiber_g.toFixed(1),
-                  added_sugar_g:   +this.totals.added_sugar_g.toFixed(1),
-                },
+                totals: totalsSnap,
                 log: this.log.map(e => ({
                   name:            e.name + (e.grams ? ` (${e.grams}g)` : ''),
                   calories:        Math.round(e.calories        || 0),
@@ -1518,16 +1845,21 @@
                 })),
               }),
             });
-            if (!res.ok) throw new Error('summary API error');
+            if (!res.ok) throw new Error('score API error');
             const data = await res.json();
-            this.summary = data.summary || null;
-            if (this.summary) {
-              localStorage.setItem('nutritrack-summary-cache', JSON.stringify({ key: cacheKey, summary: this.summary }));
-            }
+            this.summary = data.commentary || null;
+            const cachePayload = { key: cacheKey, score, commentary: this.summary };
+            localStorage.setItem('nutritrack-score-cache', JSON.stringify(cachePayload));
+            // Persist score for this calendar day
+            const todayStr = new Date().toISOString().slice(0, 10);
+            const scoreRecord = { score, commentary: this.summary || '' };
+            localStorage.setItem(SCORE_STORAGE_PREFIX + todayStr, JSON.stringify(scoreRecord));
+            this.calendarScores = { ...this.calendarScores, [todayStr]: scoreRecord };
           } catch {
             this.summary = null;
           } finally {
             this.summaryLoading = false;
+            this.summaryStale = false;
           }
         },
 
@@ -1698,13 +2030,13 @@
             ...scaled,
           });
           localStorage.setItem(todayKey(), JSON.stringify(this.log));
-          localStorage.removeItem('nutritrack-summary-cache');
+          localStorage.removeItem('nutritrack-score-cache');
           this.pendingItem = null;
           this.results = [];
           this.query = '';
           this.statusMsg = 'Added!';
           this.isError = false;
-          if (this.summary) { this.summary = null; this.summaryStale = true; }
+          this.summary = null; this.dailyScore = null; this.summaryStale = true;
         },
 
         switchMode(ai) {
@@ -1757,12 +2089,12 @@
             added_sugar_g:   r.added_sugar_g   ?? 0,
           });
           localStorage.setItem(todayKey(), JSON.stringify(this.log));
-          localStorage.removeItem('nutritrack-summary-cache');
+          localStorage.removeItem('nutritrack-score-cache');
           this.aiResult = null;
           this.query = '';
           this.statusMsg = 'Added!';
           this.isError = false;
-          if (this.summary) { this.summary = null; this.summaryStale = true; }
+          this.summary = null; this.dailyScore = null; this.summaryStale = true;
         },
 
         selectEntry(entry, i) {
@@ -1863,8 +2195,8 @@
           };
           this.log.splice(i, 1, updatedEntry);
           localStorage.setItem(todayKey(), JSON.stringify(this.log));
-          localStorage.removeItem('nutritrack-summary-cache');
-          if (this.summary) { this.summary = null; this.summaryStale = true; }
+          localStorage.removeItem('nutritrack-score-cache');
+          this.summary = null; this.dailyScore = null; this.summaryStale = true;
           this.selectedEntry = {
             _name: updatedEntry.name + (updatedEntry.grams ? ` (${updatedEntry.grams}g)` : ''),
             _index: i,
@@ -1882,16 +2214,17 @@
           if (this.selectedEntry && this.selectedEntry._index === i) { this.selectedEntry = null; this.cancelEdit(); }
           this.log.splice(i, 1);
           localStorage.setItem(todayKey(), JSON.stringify(this.log));
-          localStorage.removeItem('nutritrack-summary-cache');
-          if (this.summary) { this.summary = null; this.summaryStale = true; }
+          localStorage.removeItem('nutritrack-score-cache');
+          this.summary = null; this.dailyScore = null; this.summaryStale = true;
         },
 
         clearLog() {
           if (!confirm("Clear today's log?")) return;
           this.log = [];
           this.summary = null;
+          this.dailyScore = null;
           localStorage.removeItem(todayKey());
-          localStorage.removeItem('nutritrack-summary-cache');
+          localStorage.removeItem('nutritrack-score-cache');
         },
       };
     }

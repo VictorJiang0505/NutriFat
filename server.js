@@ -166,20 +166,14 @@ app.post('/api/personalize', async (req, res) => {
   }
 });
 
-const DAILY_SUMMARY_PROMPT = `You are a direct, honest nutrition coach. The user will send you their food log for today, their personalized daily targets, and their current totals. The tracked nutrients are: calories, protein (g), saturated fat (g), sodium (mg), fiber (g), and added sugar (g).
+const DAILY_SCORE_PROMPT = `You are a direct, honest nutrition coach. The user logged their food today and received a nutrition score out of 100 based on how closely they hit their personalized targets. You will receive the score, their targets, their actual totals, and the food log.
 
-Write a brief, actionable summary in 3–5 conversational sentences. Evaluate every nutrient strictly against its target — both going over AND falling short are problems:
+Write exactly 2–3 sentences that explain what drove this score. Be specific: name the nutrients that hurt the score most (too high or too low), name the foods responsible, and give one concrete action they can take tomorrow. Tone: honest, not harsh. Only fiber benefits from going slightly over target — everything else over target is a negative.
 
-- OVER target: flag it as excessive regardless of which nutrient it is. Protein at 230g when the target is 141g is too much protein, not praise-worthy. Calories over target means overeating. Name the specific foods that drove the excess and suggest reducing portions or swapping them.
-- UNDER target: flag it as a gap. Protein or fiber below target needs addressing; suggest easy additions.
-- NEAR target (within ~10%): briefly acknowledge it as on track.
+Respond with ONLY the plain paragraph — no bullet points, no headers, no JSON.`;
 
-Do NOT praise hitting a number that is significantly above the target. Exceeding a target for calories, protein, sodium, saturated fat, or added sugar is always a negative outcome. Only fiber can be praised for going moderately over target.
-
-Keep tone honest and specific — not generic advice. Respond with ONLY the plain summary paragraph — no bullet points, no headers, no JSON.`;
-
-app.post('/api/daily-summary', async (req, res) => {
-  const { log, totals, targets } = req.body ?? {};
+app.post('/api/daily-score', async (req, res) => {
+  const { score, log, totals, targets } = req.body ?? {};
   if (!Array.isArray(log) || log.length === 0) {
     return res.status(400).json({ error: 'log is required and must be non-empty' });
   }
@@ -199,9 +193,9 @@ app.post('/api/daily-summary', async (req, res) => {
       },
       body: JSON.stringify({
         model: 'claude-haiku-4-5-20251001',
-        max_tokens: 300,
-        system: DAILY_SUMMARY_PROMPT,
-        messages: [{ role: 'user', content: JSON.stringify({ targets, totals, log }) }],
+        max_tokens: 250,
+        system: DAILY_SCORE_PROMPT,
+        messages: [{ role: 'user', content: JSON.stringify({ score, targets, totals, log }) }],
       }),
     });
 
@@ -211,7 +205,7 @@ app.post('/api/daily-summary', async (req, res) => {
     }
 
     const data = await upstream.json();
-    res.json({ summary: data.content[0].text.trim() });
+    res.json({ commentary: data.content[0].text.trim() });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
