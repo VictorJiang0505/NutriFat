@@ -854,7 +854,6 @@
     }
 
     .calendar-day {
-      aspect-ratio: 1;
       border-radius: 7px;
       border: 1px solid var(--line);
       display: flex;
@@ -863,7 +862,8 @@
       justify-content: center;
       gap: 2px;
       transition: border-color 0.15s;
-      min-height: 52px;
+      padding: 4px 0;
+      min-height: 56px;
     }
 
     .calendar-day.is-today { border-color: var(--accent); background: rgba(110,231,183,0.06); }
@@ -1657,10 +1657,7 @@
         calendarMonth: new Date().getMonth(),
         calendarScores: {},
 
-        get dailyScore() {
-          if (this.log.length === 0) return null;
-          return calculateDailyScore(this.totals, this.dailyValues);
-        },
+        dailyScore: null,
 
         get streak() {
           const now = new Date();
@@ -1700,8 +1697,10 @@
           try { this.log = JSON.parse(localStorage.getItem(todayKey()) || '[]'); }
           catch { this.log = []; }
           this.speechSupported = !!(window.SpeechRecognition || window.webkitSpeechRecognition);
-          // Restore commentary from cache if log hasn't changed
+          this.loadCalendarScores();
+          // Compute score immediately if log has items
           if (this.log.length > 0) {
+            this.dailyScore = calculateDailyScore(this.totals, this.dailyValues);
             try {
               const cached = JSON.parse(localStorage.getItem('nutritrack-score-cache') || 'null');
               if (cached && cached.key === JSON.stringify(this.log)) {
@@ -1709,17 +1708,17 @@
               }
             } catch { /* ignore */ }
           }
-          this.loadCalendarScores();
-          // Auto-save live score to calendar whenever log changes
+          // Recalculate score and update calendar whenever the log changes
           this.$watch('log', () => {
             const todayStr = new Date().toISOString().slice(0, 10);
             if (this.log.length > 0) {
-              const score = calculateDailyScore(this.totals, this.dailyValues);
+              this.dailyScore = calculateDailyScore(this.totals, this.dailyValues);
               const existing = this.calendarScores[todayStr];
-              const scoreRecord = { score, commentary: existing?.commentary || '' };
+              const scoreRecord = { score: this.dailyScore, commentary: existing?.commentary || '' };
               localStorage.setItem(SCORE_STORAGE_PREFIX + todayStr, JSON.stringify(scoreRecord));
               this.calendarScores = { ...this.calendarScores, [todayStr]: scoreRecord };
             } else {
+              this.dailyScore = null;
               localStorage.removeItem(SCORE_STORAGE_PREFIX + todayStr);
               const updated = { ...this.calendarScores };
               delete updated[todayStr];
@@ -1987,6 +1986,7 @@
             this.profileSaved = true;
             this.profileMsg = data.explanation || `Targets set to ${targetCalories} cal/day.`;
             this.saveProfileState(true);
+            if (this.log.length > 0) this.dailyScore = calculateDailyScore(this.totals, this.dailyValues);
           } catch {
             // Fallback: formula-based macro split
             const proteinPct = p.fitnessGoal === 'Build muscle' ? 0.35 : p.fitnessGoal === 'Lose weight' ? 0.30 : 0.25;
@@ -2004,6 +2004,7 @@
             this.profileSaved = true;
             this.profileMsg = `Targets set to ${targetCalories} cal/day (AI unavailable — using formula defaults).`;
             this.saveProfileState(true);
+            if (this.log.length > 0) this.dailyScore = calculateDailyScore(this.totals, this.dailyValues);
           } finally {
             this.profileLoading = false;
           }
